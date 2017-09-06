@@ -65,6 +65,8 @@ import tensorflow as tf
 
 import reader
 
+import inspect
+
 flags = tf.flags
 logging = tf.logging
 
@@ -82,7 +84,10 @@ def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
 
 def lstm_cell(size):
-    return rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True)
+    if 'reuse' in inspect.getargspec(tf.contrib.rnn.BasicLSTMCell.__init__).args:
+        return rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
+    else:
+        return rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True)
 
 class PTBModel(object):
   """The PTB model."""
@@ -100,6 +105,7 @@ class PTBModel(object):
     # initialized to 1 but the hyperparameters of the model would need to be
     # different than reported in the paper.
     # lstm_cell = rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True)
+    
     lstm_cells = []
     for _ in range(config.num_layers):
       if is_training and config.keep_prob < 1:
@@ -109,7 +115,12 @@ class PTBModel(object):
       lstm_cells.append(lstm)
     #cell = rnn.MultiRNNCell([rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True) for _ in range(config.num_layers)], state_is_tuple=True)
     cell = rnn.MultiRNNCell(lstm_cells, state_is_tuple=True)
-
+    """
+    cell = lstm_cell(size)
+    if is_training and config.keep_prob < 1:
+        cell = rnn.DropoutWrapper(cell, output_keep_prob=config.keep_prob)
+    cell = rnn.MultiRNNCell([cell for _ in range(config.num_layers)], state_is_tuple=True)
+    """
     self._initial_state = cell.zero_state(batch_size, data_type())
 
     with tf.device("/cpu:0"):
@@ -129,6 +140,7 @@ class PTBModel(object):
     # inputs = [tf.squeeze(input_, [1])
     #           for input_ in tf.split(1, num_steps, inputs)]
     # outputs, state = tf.nn.rnn(cell, inputs, initial_state=self._initial_state)
+    """
     outputs = []
     state = self._initial_state
     with tf.variable_scope("RNN"):
@@ -136,13 +148,17 @@ class PTBModel(object):
         if time_step > 0: tf.get_variable_scope().reuse_variables()
         (cell_output, state) = cell(inputs[:, time_step, :], state)
         outputs.append(cell_output)
+    """
+    inputs = [tf.squeeze(input_, [1])
+               for input_ in tf.split(inputs, num_steps, 1)]
+    outputs, state = rnn.static_rnn(cell, inputs, initial_state=self._initial_state)
     
-    output = tf.reshape(tf.concat(1, outputs), [-1, size])
+    output = tf.reshape(tf.concat(outputs, 1), [-1, size])
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
     logits = tf.matmul(output, softmax_w) + softmax_b
-    loss = tf.nn.seq2seq.sequence_loss_by_example(
+    loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
         [logits],
         [tf.reshape(self._targets, [-1])],
         [tf.ones([batch_size * num_steps], dtype=data_type())])
@@ -279,11 +295,11 @@ def run_epoch(session, model, data, eval_op, verbose=False):
     costs += cost
     iters += model.num_steps
 
-    if verbose and step % (epoch_size // 10) == 10:
+    #if verbose and step % (epoch_size // 10) == 10:
+    if verbose and step % 100 == 0:
       print("%.3f perplexity: %.3f speed: %.0f wps" %
             (step * 1.0 / epoch_size, np.exp(costs / iters),
              iters * model.batch_size / (time.time() - start_time)))
-
   return np.exp(costs / iters)
 
 
@@ -328,9 +344,11 @@ def main(_):
       m.assign_lr(session, config.learning_rate * lr_decay)
 
       print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))
+      #print(train_data)
       train_perplexity = run_epoch(session, m, train_data, m.train_op,
                                    verbose=True)
       print("Epoch: %d Train Perplexity: %.3f" % (i + 1, train_perplexity))
+      #print(valid_data)
       valid_perplexity = run_epoch(session, mvalid, valid_data, tf.no_op())
       print("Epoch: %d Valid Perplexity: %.3f" % (i + 1, valid_perplexity))
 
