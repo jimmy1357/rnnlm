@@ -40,6 +40,15 @@ def _build_vocab(filename):
   words, _ = list(zip(*count_pairs))
   word_to_id = dict(zip(words, range(len(words))))
 
+  #save word 2 id dict
+  with open("word2id.dic", 'w')as fout:
+    for k,v in word_to_id.items():
+      fout.write(k.encode("utf-8") + "\t" + str(v) + "\n")
+  #save id 2 word dict
+  with open("id2word.dic", "w")as fout:
+    for k,v in word_to_id.items():
+      fout.write(str(v) + "\t" + k.encode("utf-8") + "\n")
+
   return word_to_id
 
 
