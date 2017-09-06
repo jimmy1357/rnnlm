@@ -59,6 +59,7 @@ from __future__ import print_function
 from tensorflow.contrib import rnn
 
 import time
+import os
 
 import numpy as np
 import tensorflow as tf
@@ -70,12 +71,10 @@ import inspect
 flags = tf.flags
 logging = tf.logging
 
-flags.DEFINE_string(
-    "model", "small",
-    "A type of model. Possible options are: small, medium, large.")
+flags.DEFINE_string("model", "small", "A type of model. Possible options are: small, medium, large.")
 flags.DEFINE_string("data_path", None, "data_path")
-flags.DEFINE_bool("use_fp16", False,
-                  "Train using 16-bit floats instead of 32bit floats")
+flags.DEFINE_bool("use_fp16", False, "Train using 16-bit floats instead of 32bit floats")
+flags.DEFINE_string("checkpoint_path", "./", "checkpoint_path")
 
 FLAGS = flags.FLAGS
 
@@ -98,8 +97,8 @@ class PTBModel(object):
     size = config.hidden_size
     vocab_size = config.vocab_size
 
-    self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
-    self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
+    self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps], name="input_x")
+    self._targets = tf.placeholder(tf.int32, [batch_size, num_steps], name="input_y")
 
     # Slightly better results can be obtained with forget gate biases
     # initialized to 1 but the hyperparameters of the model would need to be
@@ -123,7 +122,7 @@ class PTBModel(object):
     """
     self._initial_state = cell.zero_state(batch_size, data_type())
 
-    with tf.device("/cpu:0"):
+    with tf.device("/cpu:0"), tf.variable_scope("RNN"):
       embedding = tf.get_variable(
           "embedding", [vocab_size, size], dtype=data_type())
       inputs = tf.nn.embedding_lookup(embedding, self._input_data)
@@ -151,9 +150,9 @@ class PTBModel(object):
     """
     inputs = [tf.squeeze(input_, [1])
                for input_ in tf.split(inputs, num_steps, 1)]
-    outputs, state = rnn.static_rnn(cell, inputs, initial_state=self._initial_state)
+    outputs, state = rnn.static_rnn(cell, inputs, initial_state=self._initial_state, scope="RNN")
     
-    output = tf.reshape(tf.concat(outputs, 1), [-1, size])
+    output = tf.reshape(tf.concat(outputs, 1), [-1, size], name="output")
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
@@ -339,6 +338,9 @@ def main(_):
 
     tf.initialize_all_variables().run()
 
+    timestamp = str(int(time.time()))
+    saver = tf.train.Saver(tf.all_variables())
+
     for i in range(config.max_max_epoch):
       lr_decay = config.lr_decay ** max(i - config.max_epoch, 0.0)
       m.assign_lr(session, config.learning_rate * lr_decay)
@@ -351,6 +353,12 @@ def main(_):
       #print(valid_data)
       valid_perplexity = run_epoch(session, mvalid, valid_data, tf.no_op())
       print("Epoch: %d Valid Perplexity: %.3f" % (i + 1, valid_perplexity))
+      
+      path = FLAGS.checkpoint_path + "runs/" + timestamp
+      print("Writing to {}\n".format(path + "/fiction_model"))
+      if not os.path.exists(path):
+          os.makedirs(path)
+      saver.save(session, path + "/fiction_model", global_step=i)
 
     test_perplexity = run_epoch(session, mtest, test_data, tf.no_op())
     print("Test Perplexity: %.3f" % test_perplexity)
