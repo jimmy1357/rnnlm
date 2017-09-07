@@ -3,20 +3,20 @@
 import tensorflow as tf
 import collections
 
-
 flags = tf.flags
 logging = tf.logging
 
-flags.DEFINE_string("data_path", "/root/jichen/data/poetry.txt", "data path")
-flags.DEFINE_string("train_data_path", "/root/jichen/data/ptb.train.txt", "data path")
-flags.DEFINE_string("dev_data_path", "/root/jichen/data/ptb.valid.txt", "data path")
-flags.DEFINE_string("test_data_path", "/root/jichen/data/ptb.test.txt", "data path")
+flags.DEFINE_string("data_path", "/home/bruce/dataset/nlp/Chinese_poetry/poetry.txt", "data path")
+flags.DEFINE_string("train_data_path", "/home/bruce/dataset/nlp/Chinese_poetry/ptb.train.txt", "data path")
+flags.DEFINE_string("dev_data_path", "/home/bruce/dataset/nlp/Chinese_poetry/ptb.valid.txt", "data path")
+flags.DEFINE_string("test_data_path", "/home/bruce/dataset/nlp/Chinese_poetry/ptb.test.txt", "data path")
 flags.DEFINE_integer("train_length", 40000, "num. of lines in training set")
 flags.DEFINE_integer("dev_length", 1500, "num. of lines in dev set")
 flags.DEFINE_integer("test_length", 1500, "num. of lines in test set")
-flags.DEFINE_integer("common_words_count", 3000, "num. of common words in Chinese")
+flags.DEFINE_integer("common_words_count", 2000, "num. of common words in Chinese")
 
 FLAGS = flags.FLAGS
+
 
 def seg_poetry(sentence, words):
     line = ""
@@ -24,8 +24,9 @@ def seg_poetry(sentence, words):
         if word not in words:
             word = "#"
         line += word.encode("utf-8") + " "
-    line = "[ " + line + "] "
+    line = "[ " + line + "]"
     return line
+
 
 def preprocess():
     cnt = 0
@@ -34,7 +35,9 @@ def preprocess():
     for w in words:
         print w.encode("utf-8")
     """
-    with open(FLAGS.data_path, 'r')as fin, open(FLAGS.train_data_path, 'w')as train_out, open(FLAGS.dev_data_path, 'w')as dev_out, open(FLAGS.test_data_path, 'w')as test_out:
+    with open(FLAGS.data_path, 'r')as fin, open(FLAGS.train_data_path, 'w')as train_out, open(FLAGS.dev_data_path,
+                                                                                              'w')as dev_out, open(
+            FLAGS.test_data_path, 'w')as test_out:
         for line in fin:
             line = line.strip()
             line = line.split(":")
@@ -48,6 +51,7 @@ def preprocess():
                 dev_out.write(line + "\n")
             else:
                 test_out.write(line + "\n")
+
 
 def common_words(word_count):
     with open(FLAGS.data_path, 'r')as fin:
@@ -67,6 +71,7 @@ def common_words(word_count):
         """
         words, _ = zip(*wordslist)  # unzip, separate word and its count, put words together, so as to counts. 
         return words
+
 
 if __name__ == "__main__":
     preprocess()

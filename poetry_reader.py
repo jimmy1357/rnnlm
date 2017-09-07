@@ -15,7 +15,6 @@
 # ==============================================================================
 
 
-"""Utilities for parsing PTB text files."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -25,11 +24,24 @@ import os
 
 import numpy as np
 import tensorflow as tf
-
+"""
+按行分开读取诗歌，每首诗读取为一个list，不要按现在这种全部文章读成一个list的方法
+"""
+"""Utilities for parsing PTB text files."""
 
 def _read_words(filename):
     with tf.gfile.GFile(filename, "r") as f:
-        return f.read().decode("utf-8").replace("\n", "<eos>").split()
+        return f.read().decode("utf-8").replace("\n", "").split()
+
+
+def _read_file(filename):
+    poetry_list = []
+    with tf.gfile.GFile(filename, "r") as f:
+        for line in f:
+            line = line.strip().decode("utf-8").split()
+            poetry_list.append(line)
+    return poetry_list
+
 
 
 def _build_vocab(filename):
@@ -54,8 +66,11 @@ def _build_vocab(filename):
 
 
 def _file_to_word_ids(filename, word_to_id):
-    data = _read_words(filename)
-    return [word_to_id[word] for word in data if word in word_to_id]
+    data = _read_file(filename)
+    poetry_id_list = []
+    for poetry in data:
+        poetry_id_list.append([word_to_id[word] for word in poetry if word in word_to_id])
+    return poetry_id_list
 
 
 def ptb_raw_data(data_path=None):

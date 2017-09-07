@@ -29,7 +29,7 @@ def preprocess():
     cnt = 0
     with open(FLAGS.data_path, 'r')as fin, open(FLAGS.train_data_path, 'w')as train_out, open(FLAGS.dev_data_path,
                                                                                               'w')as dev_out, open(
-            FLAGS.test_data_path, 'w')as test_out:
+        FLAGS.test_data_path, 'w')as test_out:
         for line in fin:
             line = line.strip()
             cnt += 1

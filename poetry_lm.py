@@ -11,7 +11,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-import reader
+import poetry_reader
 
 import inspect
 
@@ -19,7 +19,7 @@ flags = tf.flags
 logging = tf.logging
 
 flags.DEFINE_string("model", "small", "A type of model. Possible options are: small, medium, large.")
-flags.DEFINE_string("data_path", "/home/bruce/dataset/nlp/Chinese_fiction", "data_path")
+flags.DEFINE_string("data_path", "/home/bruce/dataset/nlp/Chinese_poetry", "data_path")
 flags.DEFINE_bool("use_fp16", False, "Train using 16-bit floats instead of 32bit floats")
 flags.DEFINE_string("checkpoint_path", "./", "checkpoint_path")
 
@@ -153,7 +153,7 @@ class SmallConfig(object):
     max_max_epoch = 13
     keep_prob = 1.0
     lr_decay = 0.5
-    batch_size = 64
+    batch_size = 20
     vocab_size = 100000  # bigger params for larger training sets
 
 
@@ -185,7 +185,7 @@ class MediumConfig(object):
     max_max_epoch = 39
     keep_prob = 0.5
     lr_decay = 0.8
-    batch_size = 64
+    batch_size = 20
     vocab_size = 100000
 
 
@@ -201,7 +201,7 @@ class LargeConfig(object):
     max_max_epoch = 55
     keep_prob = 0.35
     lr_decay = 1 / 1.15
-    batch_size = 64
+    batch_size = 20
     vocab_size = 100000
 
 
@@ -217,7 +217,7 @@ class TestConfig(object):
     max_max_epoch = 1
     keep_prob = 1.0
     lr_decay = 0.5
-    batch_size = 64
+    batch_size = 20
     vocab_size = 100000
 
 
@@ -229,7 +229,7 @@ def run_epoch(session, model, data, eval_op, verbose=False):
     costs = 0.0
     iters = 0
     state = session.run(model.initial_state)
-    for step, (x, y, length) in enumerate(reader.gen_batch(data, model.batch_size)):
+    for step, (x, y, length) in enumerate(poetry_reader.gen_batch(data, model.batch_size)):
         fetches = [model.cost, model.final_state, eval_op]
         feed_dict = {}
         feed_dict[model.input_data] = x
@@ -266,7 +266,7 @@ def main(_):
     if not FLAGS.data_path:
         raise ValueError("Must set --data_path to PTB data directory")
 
-    raw_data = reader.ptb_raw_data(FLAGS.data_path)
+    raw_data = poetry_reader.ptb_raw_data(FLAGS.data_path)
     train_data, valid_data, test_data, vocab_size = raw_data
 
     config = get_config()
