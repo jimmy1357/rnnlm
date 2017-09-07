@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +89,20 @@ def ptb_raw_data(data_path=None):
     print("len valid: " + str(len(valid_data)))
     return train_data, valid_data, test_data, vocabulary
 
+def gen_batch(raw_data, batch_size):
+    """Generate batch data of poetries for training.
+    """
+    poetry_cnt = len(raw_data)
+    batch_len = poetry_cnt // batch_size
+    for i in range(batch_len):
+        batches = raw_data[batch_size * i : batch_size * (i + 1)]
+        length = max(map(len, batches))  # choose the maximum length of batches, 选择一批诗中包含字数最多的诗，返回该诗的字数
+        xdata = np.full((batch_size, length), 0, np.int32)  # 使用0初始化这个batch_size * length的矩阵( 这个矩阵中 保存的是word的id)
+        for row in range(batch_size):
+            xdata[row,:len(batches[row])] = batches[row]  # 把batches 中的第row首诗赋值给xdata
+        ydata = np.copy(xdata)
+        ydata[:,:-1] = xdata[:,1:]  # :-1表示除了最后一个元素以外的其他元素，这一行的意思就是把xdata向前偏移一位，然后赋值给y，忽略x偏移后溢出的一位和补上的一位
+        yield (xdata, ydata, length)
 
 def ptb_iterator(raw_data, batch_size, num_steps):
     """Iterate on the raw PTB data.
