@@ -98,6 +98,7 @@ class PTBModel(object):
         self.num_steps = num_steps = config.num_steps
         size = config.hidden_size
         vocab_size = config.vocab_size
+        logging.info("vocab_size in ptbmodel: {}".format(vocab_size))
 
         self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps], name="input_x")
         self._targets = tf.placeholder(tf.int32, [batch_size, num_steps], name="input_y")
@@ -241,7 +242,7 @@ class InferConfig(object):
     keep_prob = 1.0
     lr_decay = 0.5
     batch_size = 1
-    vocab_size = 25000  # bigger params for larger training sets
+    vocab_size = 100000  # bigger params for larger training sets
 
 
 class MediumConfig(object):
@@ -314,7 +315,7 @@ def run_epoch(session, model, data, eval_op, verbose=False):
 
         # if verbose and step % (epoch_size // 10) == 10:
         if verbose and step % 100 == 0:
-            print("%.3f perplexity: %.3f speed: %.0f wps" %
+            logging.info("%.3f perplexity: %.3f speed: %.0f wps" %
                   (step * 1.0 / epoch_size, np.exp(costs / iters),
                    iters * model.batch_size / (time.time() - start_time)))
     return np.exp(costs / iters)
@@ -338,12 +339,15 @@ def main(_):
         raise ValueError("Must set --data_path to PTB data directory")
 
     raw_data = reader.ptb_raw_data(FLAGS.data_path)
-    train_data, valid_data, test_data, _ = raw_data
+    train_data, valid_data, test_data, vocab_size = raw_data
 
     config = get_config()
+    config.vocab_size = vocab_size + 1
+    logging.info("Set vocabulary size to: " + str(config.vocab_size))
     eval_config = get_config()
     eval_config.batch_size = 1
     eval_config.num_steps = 1
+    eval_config.vocab_size = vocab_size + 1
 
     with tf.Graph().as_default(), tf.Session() as session:
         initializer = tf.random_uniform_initializer(-config.init_scale,
