@@ -96,7 +96,6 @@ def gen_batch(raw_data, batch_size):
     batch_len = poetry_cnt // batch_size
     for i in range(batch_len):
         batches = raw_data[batch_size * i : batch_size * (i + 1)]
-        print(batches)
         length = max(map(len, batches))  # choose the maximum length of batches, 选择一批诗中包含字数最多的诗，返回该诗的字数
         xdata = np.full((batch_size, length), 0, np.int32)  # 使用0初始化这个batch_size * length的矩阵( 这个矩阵中 保存的是word的id)
         for row in range(batch_size):
