@@ -6,10 +6,11 @@ import numpy as np
 import ptb_word_lm as lm
 from ptb_word_lm import PTBModel as Model
 
-tf.flags.DEFINE_string("checkpoint_dir", "./runs/1504700917", "checkpoint_path")
+tf.flags.DEFINE_string("checkpoint_dir", "./runs/1504748413/", "checkpoint_path")
 tf.flags.DEFINE_integer("fiction_words_count", 200, "Word count of the fiction written by RNN")
 
 FLAGS = tf.flags.FLAGS
+logging = tf.logging
 
 # evaluation
 checkpoint_file = tf.train.latest_checkpoint(FLAGS.checkpoint_dir)
@@ -54,26 +55,16 @@ with graph.as_default():
         allow_soft_placement=False,
         log_device_placement=False)
     sess = tf.Session(config=session_conf)
+    
+    config = lm.InferConfig()
+    config.vocab_size = 6231  # same as the vocab_size in training configuration
+    model = Model(is_training=False, config=config)
+    sess.run(tf.global_variables_initializer())
+    
     with sess.as_default():
         # Load the saved meta graph and restore variables
         saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
         saver.restore(sess, checkpoint_file)
-        """ 
-        x_input = graph.get_operation_by_name("input_x").outputs[0]
-        softmax_w = graph.get_operation_by_name("model/softmax_w").outputs[0]
-        softmax_b = graph.get_operation_by_name("model/softmax_b").outputs[0]
-        output = graph.get_operation_by_name("model/output").outputs[0]
-        logits = tf.matmul(output, softmax_w) + softmax_b
-        probs = tf.nn.softmax(logits)
-        """
-        config = lm.InferConfig()
-        # initializer = tf.random_uniform_initializer(-config.init_scale,config.init_scale)
-        # with tf.variable_scope("model", reuse=None, initializer=initializer):
-        model = Model(is_training=False, config=config)
-
-
-        tf.initialize_all_variables().run()  # 这里是不是不能初始化，初始化了以后还会用训练好的模型吗?
-
 
         word_dict = get_word_dict()
         words = get_id2word()
@@ -84,7 +75,7 @@ with graph.as_default():
         probs = tf.nn.softmax(model.logits)
         [probs_, state_] = sess.run([probs, model._final_state],
                                     feed_dict={model._input_data: x, model._initial_state: state_})
-        word = to_word(probs_, words)  # convert probabilities to words and get the biggest one
+        word = to_word(probs_, words)  #  get the maximum probability and convert it to the corresponding word
         fiction = ""
         word_cnt = 0
         while word != u'\u3002' and word_cnt < FLAGS.fiction_words_count:
@@ -95,4 +86,4 @@ with graph.as_default():
                                         feed_dict={model._input_data: x, model._initial_state: state_})
             word = to_word(probs_, words)
             word_cnt += 1
-        print("FICTION:  " + fiction)
+        logging.info("FICTION: {}".format(fiction.encode("utf-8")))
