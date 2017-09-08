@@ -19,7 +19,7 @@ flags = tf.flags
 logging = tf.logging
 
 flags.DEFINE_string("model", "small", "A type of model. Possible options are: small, medium, large.")
-flags.DEFINE_string("data_path", "/home/bruce/dataset/nlp/Chinese_poetry", "data_path")
+flags.DEFINE_string("data_path", "/home/bruce/dataset/nlp/Chinese_fiction", "data_path")
 flags.DEFINE_bool("use_fp16", False, "Train using 16-bit floats instead of 32bit floats")
 flags.DEFINE_string("checkpoint_path", "./", "checkpoint_path")
 
@@ -78,7 +78,7 @@ class PTBModel(object):
         outputs, state = tf.nn.dynamic_rnn(self.cell, inputs, initial_state=self._initial_state, scope="RNN")
 
         #output = tf.reshape(tf.concat(outputs, 1), [-1, size], name="output")
-        output = tf.reshape(tf.concat(outputs,1 ), [-1, size], name="output")
+        output = tf.reshape(outputs, [-1, size], name="output")
         softmax_w = tf.get_variable(
             "softmax_w", [size, vocab_size], dtype=data_type())
         softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
