@@ -48,12 +48,12 @@ with graph.as_default():
         allow_soft_placement=False,
         log_device_placement=False)
     sess = tf.Session(config=session_conf)
-
+    
     config = lm.InferConfig()
-    config.vocab_size = 6231  # same as the vocab_size in training configuration
+    config.vocab_size = 2005  # same as the vocab_size in training configuration
     model = Model(is_training=False, config=config)
     sess.run(tf.global_variables_initializer())
-
+    
     with sess.as_default():
         # Load the saved meta graph and restore variables
         saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
@@ -62,16 +62,16 @@ with graph.as_default():
         word_dict = get_word_dict()
         words = get_id2word()
         x = np.zeros((1, 1))
-        x[0, 0] = word_dict[u'\u3002']  # 中文句号
+        x[0, 0] = word_dict[u'\u005b']  # 中文句号
         state_ = model.cell.zero_state(1, tf.float32)  # batch_size = 1
         state_ = sess.run(state_)  # convert tensor to ndarray, so that it can be feeded to the initial_state
         probs = tf.nn.softmax(model.logits)
         [probs_, state_] = sess.run([probs, model._final_state],
                                     feed_dict={model._input_data: x, model._initial_state: state_})
-        word = to_word(probs_, words)  # get the maximum probability and convert it to the corresponding word
+        word = to_word(probs_, words)  #  get the maximum probability and convert it to the corresponding word
         fiction = ""
         word_cnt = 0
-        while word != u'\u3002' and word_cnt < FLAGS.fiction_words_count:
+        while word != u'\u005d' and word_cnt < FLAGS.fiction_words_count:
             fiction += word
             x = np.zeros((1, 1))
             x[0, 0] = word_dict[word]
